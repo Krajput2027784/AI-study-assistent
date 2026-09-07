@@ -1,31 +1,3 @@
-export default function Progress() {
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Learning Progress</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Study Hours Trend</h2>
-          <div className="h-64 bg-gray-50 flex items-end justify-between p-4 rounded-lg">
-            {[4, 6, 3, 7, 5, 8, 4].map((h, i) => (
-              <div key={i} className="w-10 bg-blue-500 rounded-t" style={{ height: `${h * 10}%` }}></div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Subject Mastery</h2>
-          <div className="space-y-4">
-            {['Psychology', 'Calculus', 'Chemistry', 'Physics'].map(sub => (
-              <div key={sub}>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700">{sub}</span>
-                  <span className="text-sm text-gray-500">80%</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full"><div className="h-2 bg-green-500 rounded-full" style={{ width: '80%' }}></div></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useEffect,useState } from 'react'; import { api } from '../api';
+interface P{total_notes:number;total_materials:number;total_quizzes:number;quizzes_attempted:number;average_quiz_score:number|null;total_chat_sessions:number;total_media:number}
+export default function Progress(){const[p,setP]=useState<P|null>(null);const[error,setError]=useState('');useEffect(()=>{api<P>('/api/progress').then(setP).catch(e=>setError(e.message))},[]);if(error)return <div className="p-8 text-red-600">{error}</div>;if(!p)return <div className="p-8 text-gray-500">Loading progress…</div>;return <div className="p-8"><h1 className="text-3xl font-bold mb-8">Learning Progress</h1><div className="grid grid-cols-2 md:grid-cols-4 gap-5">{[['Notes',p.total_notes],['Materials',p.total_materials],['Quizzes',p.total_quizzes],['Attempts',p.quizzes_attempted],['Average Score',p.average_quiz_score==null?'—':`${p.average_quiz_score}%`],['Chat Sessions',p.total_chat_sessions],['Videos/Audio',p.total_media]].map(([l,v])=><div key={l} className="bg-white p-6 rounded-xl shadow-sm border"><p className="text-sm text-gray-500">{l}</p><p className="text-2xl font-bold text-blue-600 mt-2">{v}</p></div>)}</div></div>}

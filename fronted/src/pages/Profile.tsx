@@ -1,22 +1,2 @@
-export default function Profile() {
-  return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Profile & Settings</h1>
-      
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8">
-        <h2 className="text-xl font-semibold mb-6">Personal Information</h2>
-        <div className="space-y-4">
-          <input className="w-full p-3 border rounded-lg" defaultValue="Alex Smith" />
-          <input className="w-full p-3 border rounded-lg" defaultValue="alex@university.edu" />
-          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg">Save Changes</button>
-        </div>
-      </div>
-
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-xl font-semibold mb-6">Notifications</h2>
-        <label className="flex items-center gap-3"><input type="checkbox" defaultChecked /> Email notifications</label>
-      </div>
-    </div>
-  );
-}
-
+import { FormEvent,useState } from 'react'; import { api } from '../api'; import { useAuth } from '../auth';
+export default function Profile(){const{user,refreshUser}=useAuth();const[name,setName]=useState(user?.full_name||'');const[email,setEmail]=useState(user?.email||'');const[msg,setMsg]=useState('');const[error,setError]=useState('');const save=async(e:FormEvent)=>{e.preventDefault();try{await api('/api/users/me',{method:'PUT',body:JSON.stringify({full_name:name,email})});await refreshUser();setMsg('Profile updated successfully.');setError('')}catch(e){setError(e instanceof Error?e.message:'Update failed.');setMsg('')}};return <div className="p-8 max-w-2xl mx-auto"><h1 className="text-3xl font-bold mb-8">Profile & Settings</h1><div className="bg-white p-8 rounded-xl shadow-sm border"><h2 className="text-xl font-semibold mb-6">Personal Information</h2>{msg&&<p className="mb-4 text-green-600">{msg}</p>}{error&&<p className="mb-4 text-red-600">{error}</p>}<form onSubmit={save} className="space-y-4"><input value={name} onChange={e=>setName(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Full name" required/><input value={email} onChange={e=>setEmail(e.target.value)} type="email" className="w-full p-3 border rounded-lg" placeholder="Email" required/><button className="px-6 py-2 bg-blue-600 text-white rounded-lg">Save Changes</button></form><p className="text-xs text-gray-500 mt-6">Account created: {user&&new Date(user.created_at).toLocaleDateString()}</p></div></div>}

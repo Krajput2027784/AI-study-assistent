@@ -1,42 +1,7 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Upload, FileText, Bot, BookOpen } from 'lucide-react';
-
-export default function Materials() {
-  const [materials] = useState([
-    { id: '1', title: 'Biology Chapter 4 Metabolism', type: 'PDF', size: '5MB' },
-    { id: '2', title: 'CS101 Intro Lecture', type: 'PDF', size: '2MB' },
-  ]);
-
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Study Materials</h1>
-      <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center mb-8 bg-gray-50">
-        <Upload className="mx-auto mb-4 text-gray-400" size={48} />
-        <p className="text-lg font-medium">Drag and drop your PDFs here</p>
-        <p className="text-gray-500">Supported: PDF up to 50MB</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {materials.map(mat => (
-          <div key={mat.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4 mb-4">
-              <FileText className="text-red-500" size={32} />
-              <div>
-                <h3 className="font-semibold">{mat.title}</h3>
-                <p className="text-sm text-gray-500">{mat.type} • {mat.size}</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Link to={`/materials/${mat.id}`} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">Open</Link>
-              <button className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-                <Bot size={14} /> Ask AI
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
+import { useEffect,useRef,useState } from 'react'; import { Link } from 'react-router-dom'; import { Upload,FileText,Trash2 } from 'lucide-react'; import { api } from '../api'; import { Material } from '../types';
+export default function Materials(){const[file,setFile]=useState<File|null>(null);const[title,setTitle]=useState('');const[materials,setMaterials]=useState<Material[]>([]);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const input=useRef<HTMLInputElement>(null);
+ const load=()=>api<Material[]>('/api/materials').then(setMaterials).catch(e=>setError(e.message));useEffect(()=>{load()},[]);
+ const upload=async()=>{if(!file)return;setBusy(true);setError('');const fd=new FormData();fd.append('title',title||file.name.replace(/\.[^.]+$/,''));fd.append('file',file);try{const item=await api<Material>('/api/materials/upload',{method:'POST',body:fd});setMaterials(m=>[item,...m]);setFile(null);setTitle('');if(input.current)input.current.value='';}catch(e){setError(e instanceof Error?e.message:'Upload failed.')}finally{setBusy(false)}};
+ const del=async(id:number)=>{try{await api(`/api/materials/${id}`,{method:'DELETE'});setMaterials(m=>m.filter(x=>x.id!==id))}catch(e){setError(e instanceof Error?e.message:'Delete failed.')}};
+ const size=(n:number)=>(n/1024/1024).toFixed(2)+' MB';
+ return <div className="p-8"><h1 className="text-3xl font-bold mb-6">Study Materials</h1>{error&&<p className="mb-4 text-red-600">{error}</p>}<div className="border-2 border-dashed border-gray-300 rounded-xl p-8 mb-8 bg-gray-50"><div className="text-center"><Upload className="mx-auto mb-4 text-gray-400" size={48}/><p className="text-lg font-medium">Upload a study document</p><p className="text-gray-500 mb-4">PDF and common study documents up to 50MB</p><input ref={input} type="file" onChange={e=>setFile(e.target.files?.[0]||null)} className="mx-auto block mb-3" accept=".pdf,.txt,.md,.doc,.docx"/>{file&&<div className="flex flex-col sm:flex-row gap-2 justify-center"><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Material title" className="p-3 border rounded-lg"/><button onClick={upload} disabled={busy} className="px-5 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-60">{busy?'Uploading…':'Upload'}</button></div>}</div></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{materials.map(mat=><div key={mat.id} className="bg-white p-6 rounded-xl shadow-sm border"><div className="flex items-center gap-4 mb-4"><FileText className="text-red-500" size={32}/><div className="min-w-0"><h3 className="font-semibold truncate">{mat.title}</h3><p className="text-sm text-gray-500">{mat.material_type.toUpperCase()} • {size(mat.file_size)}</p></div></div><div className="flex gap-2"><Link to={`/materials/${mat.id}`} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Open / Ask AI</Link><button onClick={()=>del(mat.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={18}/></button></div></div>)}{!materials.length&&<p className="text-gray-500">No study materials uploaded yet.</p>}</div></div>}

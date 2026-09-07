@@ -1,44 +1,6 @@
-import { useState } from 'react';
-import { BrainCircuit, CheckCircle, XCircle } from 'lucide-react';
-
-export default function QuizGenerator() {
-  const [step, setStep] = useState<'setup' | 'quiz' | 'result'>('setup');
-  const [score, setScore] = useState(0);
-
-  const questions = [
-    { q: 'What is the powerhouse of the cell?', a: ['Nucleus', 'Mitochondria', 'Ribosome'], correct: 1 },
-    { q: 'What is 2 + 2?', a: ['3', '4', '5'], correct: 1 }
-  ];
-
-  return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8 flex items-center gap-3 text-gray-900"><BrainCircuit /> Quiz Generator</h1>
-      
-      {step === 'setup' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-6">Configure Your Quiz</h2>
-          <button onClick={() => setStep('quiz')} className="w-full py-3 bg-blue-600 text-white rounded-lg">Generate & Start</button>
-        </div>
-      )}
-
-      {step === 'quiz' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-lg font-medium mb-6">{questions[0].q}</p>
-          <div className="space-y-3">
-            {questions[0].a.map((opt, i) => (
-              <button key={i} onClick={() => { setScore(1); setStep('result'); }} className="w-full text-left p-4 rounded-lg border border-gray-200 hover:bg-blue-50">{opt}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {step === 'result' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
-          <h2 className="text-2xl font-bold mb-4">Quiz Completed!</h2>
-          <p className="text-xl mb-6">Your Score: {score} / 1</p>
-          <button onClick={() => setStep('setup')} className="px-6 py-2 bg-blue-600 text-white rounded-lg">Back to Setup</button>
-        </div>
-      )}
-    </div>
-  );
-}
+import { useEffect,useState } from 'react'; import { BrainCircuit } from 'lucide-react'; import { api } from '../api'; import { Quiz,QuizSummary } from '../types';
+export default function QuizGenerator(){const[topic,setTopic]=useState('');const[count,setCount]=useState(5);const[quizzes,setQuizzes]=useState<QuizSummary[]>([]);const[quiz,setQuiz]=useState<Quiz|null>(null);const[answers,setAnswers]=useState<Record<number,string>>({});const[result,setResult]=useState<{score:number;total_questions:number}|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState('');
+ const load=()=>api<QuizSummary[]>('/api/quizzes').then(setQuizzes).catch(e=>setError(e.message));useEffect(()=>{load()},[]);
+ const generate=async()=>{setBusy(true);setError('');try{const q=await api<Quiz>('/api/quizzes/generate',{method:'POST',body:JSON.stringify({topic:topic||'General Computer Science',question_count:count})});setQuiz(q);setAnswers({});setResult(null);await load()}catch(e){setError(e instanceof Error?e.message:'Quiz generation failed.')}finally{setBusy(false)}};
+ const submit=async()=>{if(!quiz)return;setBusy(true);try{const r=await api<{attempt:{score:number;total_questions:number}}>(`/api/quizzes/${quiz.id}/submit`,{method:'POST',body:JSON.stringify({answers:Object.entries(answers).map(([id,selected_option])=>({question_id:Number(id),selected_option}))})});setResult(r.attempt)}catch(e){setError(e instanceof Error?e.message:'Submission failed.')}finally{setBusy(false)}};
+ return <div className="p-8 max-w-4xl mx-auto"><h1 className="text-3xl font-bold mb-8 flex items-center gap-3"><BrainCircuit/>Quiz Generator</h1>{error&&<p className="mb-4 text-red-600">{error}</p>}{!quiz?<><div className="bg-white p-8 rounded-xl shadow-sm border mb-8"><h2 className="text-xl font-semibold mb-6">Generate an AI quiz</h2><div className="grid md:grid-cols-3 gap-3"><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Topic e.g. Operating Systems" className="md:col-span-2 p-3 border rounded-lg"/><input type="number" min={2} max={10} value={count} onChange={e=>setCount(Number(e.target.value))} className="p-3 border rounded-lg"/></div><button onClick={generate} disabled={busy} className="mt-4 w-full py-3 bg-blue-600 text-white rounded-lg disabled:opacity-60">{busy?'Generating…':'Generate & Start'}</button></div><div className="bg-white p-6 rounded-xl border"><h2 className="font-semibold mb-4">Your quizzes</h2>{quizzes.map(q=><div key={q.id} className="flex justify-between p-3 bg-gray-50 rounded-lg mb-2"><span>{q.title} <span className="text-xs text-gray-500">({q.question_count} questions)</span></span><button onClick={()=>api<Quiz>(`/api/quizzes/${q.id}`).then(x=>{setQuiz(x);setAnswers({});setResult(null)}).catch(e=>setError(e.message))} className="text-blue-600">Take</button></div>)}{!quizzes.length&&<p className="text-gray-500">No quizzes yet.</p>}</div></>:<div className="bg-white p-8 rounded-xl border">{result?<div className="text-center"><h2 className="text-2xl font-bold mb-4">Quiz Completed!</h2><p className="text-xl mb-6">Score: {result.score} / {result.total_questions}</p><button onClick={()=>setQuiz(null)} className="px-6 py-2 bg-blue-600 text-white rounded-lg">Back to Quizzes</button></div>:<><h2 className="text-2xl font-bold mb-6">{quiz.title}</h2>{quiz.questions.map((q,i)=><div key={q.id} className="mb-8"><p className="font-medium mb-3">{i+1}. {q.question_text}</p><div className="grid gap-2">{q.options.map(o=><label key={o} className={`p-3 border rounded-lg cursor-pointer ${answers[q.id]===o?'bg-blue-50 border-blue-500':''}`}><input type="radio" name={`q-${q.id}`} checked={answers[q.id]===o} onChange={()=>setAnswers(a=>({...a,[q.id]:o}))} className="mr-2"/>{o}</label>)}</div></div>)}<button onClick={submit} disabled={busy||Object.keys(answers).length!==quiz.questions.length} className="w-full py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50">{busy?'Submitting…':'Submit Quiz'}</button></>}</div>}</div>}

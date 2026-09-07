@@ -1,44 +1,20 @@
-export default function Dashboard() {
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Welcome back, Alex!</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'Study Hours', value: '12.5', color: 'text-blue-600' },
-          { label: 'Active Notes', value: '45', color: 'text-green-600' },
-          { label: 'Quizzes Taken', value: '18', color: 'text-purple-600' },
-          { label: 'Current Streak', value: '5 days', color: 'text-orange-600' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api } from '../api';
+import { useAuth } from '../auth';
+import { Note, Material, QuizSummary } from '../types';
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-4">Recent Notes</h2>
-          <div className="space-y-4">
-            {['Introduction to Psychology', 'Advanced Calculus - Limits', 'Organic Chemistry - Alkanes'].map((note) => (
-              <div key={note} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-800">{note}</span>
-                <button className="text-blue-600 hover:text-blue-700">Open</button>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <button className="w-full text-left p-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium">Create New Note</button>
-            <button className="w-full text-left p-3 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium">Generate New Quiz</button>
-            <button className="w-full text-left p-3 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium">Upload Material</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface DashboardData { user: { full_name: string; email: string }; stats: { total_notes:number; total_materials:number; total_quizzes:number; quizzes_attempted:number; average_quiz_score:number|null; total_chat_sessions:number; total_media:number }; recent_notes: Note[]; recent_quizzes: QuizSummary[]; recent_materials: Material[]; }
+
+export default function Dashboard() {
+  const { user } = useAuth(); const [data,setData]=useState<DashboardData|null>(null); const [error,setError]=useState('');
+  useEffect(()=>{api<DashboardData>('/api/dashboard').then(setData).catch(e=>setError(e.message));},[]);
+  if(error) return <div className="p-8 text-red-600">{error}</div>;
+  if(!data) return <div className="p-8 text-gray-500">Loading dashboard…</div>;
+  const stats=[['Notes',data.stats.total_notes],['Materials',data.stats.total_materials],['Quizzes Taken',data.stats.quizzes_attempted],['Avg Quiz',data.stats.average_quiz_score==null?'—':`${data.stats.average_quiz_score}%`]];
+  return <div className="p-8"><h1 className="text-3xl font-bold text-gray-900 mb-6">Welcome back, {user?.full_name}!</h1>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">{stats.map(([label,value])=><div key={label} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><p className="text-sm text-gray-500 mb-1">{label}</p><p className="text-2xl font-bold text-blue-600">{value}</p></div>)}</div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"><div className="bg-white p-6 rounded-xl shadow-sm border"><h2 className="text-lg font-semibold mb-4">Recent Notes</h2>{data.recent_notes.length?data.recent_notes.map(n=><div key={n.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg mb-3"><span className="font-medium">{n.title}</span><Link to={`/notes/${n.id}`} className="text-blue-600">Open</Link></div>):<p className="text-gray-500">No notes yet.</p>}</div>
+    <div className="bg-white p-6 rounded-xl shadow-sm border"><h2 className="text-lg font-semibold mb-4">Quick Actions</h2><div className="grid gap-3"><Link to="/notes/new" className="p-3 rounded-lg bg-blue-50 text-blue-700 font-medium">Create New Note</Link><Link to="/quiz" className="p-3 rounded-lg bg-purple-50 text-purple-700 font-medium">Generate New Quiz</Link><Link to="/materials" className="p-3 rounded-lg bg-gray-50 text-gray-700 font-medium">Upload Material</Link><Link to="/chat" className="p-3 rounded-lg bg-green-50 text-green-700 font-medium">Ask AI Assistant</Link></div></div></div>
+  </div>;
 }
