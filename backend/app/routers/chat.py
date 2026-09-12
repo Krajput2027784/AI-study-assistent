@@ -1,6 +1,6 @@
 """AI study chat sessions and messages."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
@@ -138,7 +138,7 @@ def send_message(
         role="assistant",
         content=reply_text,
     )
-    session.updated_at = datetime.utcnow()
+    session.updated_at = datetime.now(timezone.utc)
     if session.title == "New chat":
         session.title = user_message.content[:80]
 

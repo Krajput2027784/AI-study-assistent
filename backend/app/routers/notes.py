@@ -6,7 +6,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import Note, User
-from app.schemas import NoteCreate, NotePublic, NoteUpdate
+from app.schemas import (
+    NoteAiEnhanceRequest,
+    NoteAiEnhanceResponse,
+    NoteCreate,
+    NotePublic,
+    NoteUpdate,
+)
+from app.services.ai_service import enhance_note_text
 
 router = APIRouter()
 
@@ -16,6 +23,26 @@ def _get_owned_note(db: Session, note_id: int, user_id: int) -> Note:
     if note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found.")
     return note
+
+
+@router.post(
+    "/ai-enhance",
+    response_model=NoteAiEnhanceResponse,
+    summary="Enhance or summarize study notes using AI",
+)
+def ai_enhance_note(
+    payload: NoteAiEnhanceRequest,
+    current_user: User = Depends(get_current_user),
+) -> NoteAiEnhanceResponse:
+    enhanced, used_mock = enhance_note_text(
+        title=payload.title,
+        content=payload.content,
+        instruction=payload.instruction,
+    )
+    return NoteAiEnhanceResponse(
+        enhanced_content=enhanced,
+        used_mock_ai=used_mock,
+    )
 
 
 @router.post(

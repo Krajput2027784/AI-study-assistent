@@ -15,7 +15,7 @@ from app.config import (
     MAX_MATERIAL_BYTES,
 )
 from app.database import get_db
-from app.dependencies import LargeFormRoute, get_current_user
+from app.dependencies import LargeFormRoute, get_current_user, get_current_user_flexible
 from app.models import Material, User
 from app.schemas import MaterialPublic
 
@@ -127,7 +127,7 @@ def get_material(
 def download_material(
     material_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_flexible),
 ) -> FileResponse:
     material = _get_owned_material(db, material_id, current_user.id)
     absolute = (BASE_DIR / material.file_path).resolve()

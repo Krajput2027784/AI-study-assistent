@@ -3,16 +3,18 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 import httpx
 
-from app.config import GEMINI_API_KEY
+from app.config import GEMINI_API_KEY, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+
+def get_gemini_url() -> str:
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 
 def grade_quiz(questions, submitted: dict[int, str]):
@@ -204,21 +206,35 @@ def generate_quiz_questions(topic: str, count: int) -> tuple[list[dict[str, Any]
 
     try:
         response = httpx.post(
-            GEMINI_URL,
+            get_gemini_url(),
             params={"key": GEMINI_API_KEY},
             json={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
             timeout=45,
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            logger.error("Gemini quiz generation HTTP error %d: %s", response.status_code, response.text)
+            response.raise_for_status()
+
         data = response.json()
-        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        candidates = data.get("candidates", [])
+        if not candidates:
+            raise ValueError("No candidates returned by Gemini")
+        parts = candidates[0].get("content", {}).get("parts", [])
+        text = "".join(p.get("text", "") for p in parts if isinstance(p, dict) and "text" in p).strip()
 
-        if text.startswith("```"):
-            text = text.strip("`")
-            if text.lower().startswith("json"):
-                text = text[4:].strip()
+        # Extract JSON array using regex if available
+        json_match = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
+        if json_match:
+            clean_json = json_match.group(0)
+        else:
+            clean_json = text
+            if clean_json.startswith("```"):
+                clean_json = clean_json.strip("`")
+                if clean_json.lower().startswith("json"):
+                    clean_json = clean_json[4:].strip()
 
-        questions = _normalise_questions(json.loads(text), count)
+        parsed = json.loads(clean_json)
+        questions = _normalise_questions(parsed, count)
         if len(questions) < count:
             # Complete a partially generated quiz with safe fallback questions.
             existing = {item["question_text"] for item in questions}

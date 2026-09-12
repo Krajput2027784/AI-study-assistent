@@ -76,6 +76,17 @@ class NoteUpdate(BaseModel):
     content: str | None = None
 
 
+class NoteAiEnhanceRequest(BaseModel):
+    title: str = Field(default="", max_length=255)
+    content: str = Field(..., min_length=1)
+    instruction: str | None = Field(default=None, max_length=500)
+
+
+class NoteAiEnhanceResponse(BaseModel):
+    enhanced_content: str
+    used_mock_ai: bool
+
+
 class NotePublic(BaseModel):
     id: int
     user_id: int
@@ -288,3 +299,4 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     gemini_configured: bool
+    gemini_model: str

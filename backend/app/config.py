@@ -23,8 +23,13 @@ def _resolve_sqlite_url(url: str) -> str:
     if not url.startswith("sqlite"):
         return url
 
+    if ":memory:" in url:
+        return "sqlite:///:memory:"
+
     if url.startswith("sqlite:///") and not url.startswith("sqlite:////"):
         raw_path = url.replace("sqlite:///", "", 1)
+        if raw_path == ":memory:":
+            return "sqlite:///:memory:"
         path = Path(raw_path)
         if not path.is_absolute():
             path = BASE_DIR / path
@@ -37,8 +42,21 @@ DATABASE_URL = _resolve_sqlite_url(_env("DATABASE_URL", "sqlite:///./app.db") or
 SECRET_KEY = _env("SECRET_KEY", "change-this-secret-key") or "change-this-secret-key"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(_env("ACCESS_TOKEN_EXPIRE_MINUTES", "60") or "60")
 GEMINI_API_KEY = _env("GEMINI_API_KEY", "") or ""
+GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-3.6-flash") or "gemini-3.6-flash"
 FRONTEND_URL = _env("FRONTEND_URL", "http://localhost:3000") or "http://localhost:3000"
 JWT_ALGORITHM = "HS256"
+
+# Build allowed origins list from FRONTEND_URL and common dev ports
+_raw_origins = [u.strip().rstrip("/") for u in FRONTEND_URL.split(",") if u.strip()]
+_default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+]
+ALLOWED_ORIGINS = list(dict.fromkeys(_raw_origins + _default_origins))
 
 UPLOADS_DIR = BASE_DIR / "uploads"
 MATERIALS_DIR = UPLOADS_DIR / "materials"

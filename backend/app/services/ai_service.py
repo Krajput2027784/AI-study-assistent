@@ -7,16 +7,27 @@ from typing import Iterable
 
 import httpx
 
-from app.config import GEMINI_API_KEY
+from app.config import GEMINI_API_KEY, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+
+def get_gemini_url() -> str:
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 
 def is_gemini_configured() -> bool:
     return bool(GEMINI_API_KEY)
+
+
+def _extract_gemini_text(data: dict) -> str:
+    """Safely extract all text parts from Gemini response."""
+    candidates = data.get("candidates", [])
+    if not candidates:
+        return ""
+    parts = candidates[0].get("content", {}).get("parts", [])
+    text_parts = [p.get("text", "") for p in parts if isinstance(p, dict) and "text" in p]
+    return "".join(text_parts).strip()
 
 
 def _mock_reply(user_text: str) -> str:
@@ -73,7 +84,7 @@ def generate_study_reply(
                 {
                     "text": (
                         "You are a helpful AI study assistant. Explain clearly, "
-                        "stay academic, and do not invent sources."
+                        "stay academic, provide examples where useful, and do not invent sources."
                     )
                 }
             ]
@@ -85,19 +96,21 @@ def generate_study_reply(
 
     try:
         response = httpx.post(
-            GEMINI_URL,
+            get_gemini_url(),
             params={"key": GEMINI_API_KEY},
             json=payload,
             timeout=45.0,
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            logger.error(
+                "Gemini request failed with status %d: %s",
+                response.status_code,
+                response.text,
+            )
+            response.raise_for_status()
+
         data = response.json()
-        text = (
-            data.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text")
-        )
+        text = _extract_gemini_text(data)
         if not text:
             logger.warning("Gemini returned an empty response: %s", data)
             return "I could not generate a response right now. Please try again.", False
@@ -110,3 +123,49 @@ def generate_study_reply(
             f"You asked: {last_user[:180]}",
             True,
         )
+
+
+def enhance_note_text(
+    title: str,
+    content: str,
+    instruction: str | None = None,
+) -> tuple[str, bool]:
+    """Enhance and structure study notes into a comprehensive study guide."""
+    if not is_gemini_configured():
+        fallback = (
+            f"# {title or 'Study Notes'}\n\n"
+            "## Summary\n"
+            f"{content}\n\n"
+            "## Key Takeaways\n"
+            "- Review these notes regularly for better recall.\n"
+            "- Connect these concepts with relevant textbook examples.\n"
+        )
+        return fallback, True
+
+    inst = instruction or "Structure and enhance these study notes with clear headings, key concepts, and takeaways."
+    prompt = (
+        f"{inst}\n\n"
+        f"Title: {title}\n"
+        f"Rough Notes:\n{content}\n\n"
+        "Format output in clean, readable Markdown suitable for student revision."
+    )
+
+    try:
+        response = httpx.post(
+            get_gemini_url(),
+            params={"key": GEMINI_API_KEY},
+            json={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
+            timeout=45.0,
+        )
+        if response.status_code != 200:
+            logger.error("Gemini note enhancement failed (%d): %s", response.status_code, response.text)
+            response.raise_for_status()
+
+        data = response.json()
+        text = _extract_gemini_text(data)
+        if not text:
+            raise ValueError("Empty text received from Gemini")
+        return text, False
+    except Exception as exc:
+        logger.exception("Note enhancement failed: %s", exc)
+        return f"# {title}\n\n{content}\n\n*(AI enhancement unavailable)*", True

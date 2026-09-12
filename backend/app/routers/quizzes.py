@@ -248,3 +248,18 @@ def submit_quiz(
             for item in graded
         ],
     )
+
+
+@router.delete(
+    "/{quiz_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a quiz",
+)
+def delete_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    quiz = _get_owned_quiz(db, quiz_id, current_user.id)
+    db.delete(quiz)
+    db.commit()

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import FRONTEND_URL, SECRET_KEY, ensure_upload_dirs
+from app.config import ALLOWED_ORIGINS, GEMINI_MODEL, SECRET_KEY, ensure_upload_dirs
 from app.database import init_db
 from app.routers import auth, chat, dashboard, materials, media, notes, progress, quizzes, users
 from app.schemas import HealthResponse
@@ -36,7 +36,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(dict.fromkeys([FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"])),
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,6 +65,7 @@ def health() -> HealthResponse:
         status="ok",
         service="ai-study-assistant-backend",
         gemini_configured=is_gemini_configured(),
+        gemini_model=GEMINI_MODEL,
     )
 
 

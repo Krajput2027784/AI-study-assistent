@@ -19,7 +19,7 @@ from app.config import (
     VIDEOS_DIR,
 )
 from app.database import get_db
-from app.dependencies import LargeFormRoute, get_current_user
+from app.dependencies import LargeFormRoute, get_current_user, get_current_user_flexible
 from app.models import MediaResource, User
 from app.schemas import MediaPublic
 
@@ -160,7 +160,7 @@ def get_media(
 def stream_media_file(
     media_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_flexible),
 ) -> FileResponse:
     item = _get_owned_media(db, media_id, current_user.id)
     if not item.file_path:
