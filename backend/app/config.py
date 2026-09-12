@@ -6,7 +6,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from backend import app
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
