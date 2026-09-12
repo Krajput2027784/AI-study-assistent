@@ -1,9 +1,12 @@
 """Application settings loaded from environment variables."""
 
+from logging import config
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from backend import app
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,7 +46,10 @@ SECRET_KEY = _env("SECRET_KEY", "change-this-secret-key") or "change-this-secret
 ACCESS_TOKEN_EXPIRE_MINUTES = int(_env("ACCESS_TOKEN_EXPIRE_MINUTES", "60") or "60")
 GEMINI_API_KEY = _env("GEMINI_API_KEY", "") or ""
 GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-3.6-flash") or "gemini-3.6-flash"
-FRONTEND_URL = _env("FRONTEND_URL", "http://localhost:3000") or "http://localhost:3000"
+FRONTEND_URL = _env(
+    "FRONTEND_URL",
+    "https://ai-study-assistent-live.vercel.app"
+) or "https://ai-study-assistent-live.vercel.app"
 JWT_ALGORITHM = "HS256"
 
 # Build allowed origins list from FRONTEND_URL and common dev ports
