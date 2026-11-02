@@ -57,7 +57,7 @@ export default function Materials() {
   const size = (n: number) => (n / 1024 / 1024).toFixed(2) + ' MB';
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-gray-900">Study Materials</h1>
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
@@ -71,7 +71,7 @@ export default function Materials() {
           <Upload className="mx-auto mb-3 text-blue-600" size={44} />
           <h2 className="text-lg font-semibold text-gray-800 mb-1">Upload a Study Document</h2>
           <p className="text-xs text-gray-500 mb-4">
-            Upload PDFs, Markdown, or text files (up to 50MB) to review and analyze with AI.
+            Upload PDFs, Markdown, or text files to review and analyze with AI.
           </p>
 
           <input

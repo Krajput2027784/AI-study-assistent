@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BrainCircuit, BookOpen, MessageSquareText } from 'lucide-react';
+import { BrainCircuit } from 'lucide-react';
 
 export default function Landing() {
   return (
@@ -17,20 +17,6 @@ export default function Landing() {
         <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">Master your subjects with AI assistance, smart notes, and interactive quizzes.</p>
         <Link to="/signup" className="px-8 py-4 bg-blue-600 text-white rounded-lg text-lg hover:bg-blue-700">Get Started</Link>
       </header>
-
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-8 p-12">
-        {[
-          { icon: MessageSquareText, title: 'AI Chat', text: 'Ask questions, summarize topics.' },
-          { icon: BookOpen, title: 'Smart Notes', text: 'Organize and manage your notes.' },
-          { icon: BrainCircuit, title: 'Quiz Generator', text: 'Test your knowledge instantly.' },
-        ].map(feat => (
-          <div key={feat.title} className="p-8 bg-gray-50 rounded-xl border">
-            <feat.icon size={40} className="text-blue-600 mb-4" />
-            <h3 className="text-xl font-bold mb-2">{feat.title}</h3>
-            <p className="text-gray-600">{feat.text}</p>
-          </div>
-        ))}
-      </section>
     </div>
   );
 }

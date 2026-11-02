@@ -36,6 +36,22 @@ class UserLogin(BaseModel):
     password: str = Field(..., min_length=1, max_length=72)
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=2000)
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def bcrypt_length(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 UTF-8 bytes.")
+        return value
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -210,6 +226,7 @@ class QuizPublic(BaseModel):
     description: str | None
     created_at: datetime
     questions: list[QuestionPublic]
+    used_fallback: bool = False
 
 
 class AnswerSubmit(BaseModel):

@@ -30,11 +30,11 @@ def _get_owned_note(db: Session, note_id: int, user_id: int) -> Note:
     response_model=NoteAiEnhanceResponse,
     summary="Enhance or summarize study notes using AI",
 )
-def ai_enhance_note(
+async def ai_enhance_note(
     payload: NoteAiEnhanceRequest,
     current_user: User = Depends(get_current_user),
 ) -> NoteAiEnhanceResponse:
-    enhanced, used_mock = enhance_note_text(
+    enhanced, used_mock = await enhance_note_text(
         title=payload.title,
         content=payload.content,
         instruction=payload.instruction,

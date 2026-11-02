@@ -48,4 +48,5 @@ export interface QuizQuestion {
 
 export interface Quiz extends QuizSummary {
   questions: QuizQuestion[];
+  used_fallback?: boolean;
 }

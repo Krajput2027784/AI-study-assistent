@@ -53,7 +53,7 @@ def _history_to_gemini_contents(history: Iterable[dict[str, str]]) -> list[dict]
     return contents
 
 
-def generate_study_reply(
+async def generate_study_reply(
     history: list[dict[str, str]],
     extra_context: str | None = None,
 ) -> tuple[str, bool]:
@@ -95,12 +95,12 @@ def generate_study_reply(
     }
 
     try:
-        response = httpx.post(
-            get_gemini_url(),
-            params={"key": GEMINI_API_KEY},
-            json=payload,
-            timeout=45.0,
-        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0)) as client:
+            response = await client.post(
+                get_gemini_url(),
+                headers={"x-goog-api-key": GEMINI_API_KEY},
+                json={**payload, "generationConfig": {"maxOutputTokens": 2048, "temperature": 0.4}},
+            )
         if response.status_code != 200:
             logger.error(
                 "Gemini request failed with status %d: %s",
@@ -125,7 +125,7 @@ def generate_study_reply(
         )
 
 
-def enhance_note_text(
+async def enhance_note_text(
     title: str,
     content: str,
     instruction: str | None = None,
@@ -151,12 +151,12 @@ def enhance_note_text(
     )
 
     try:
-        response = httpx.post(
-            get_gemini_url(),
-            params={"key": GEMINI_API_KEY},
-            json={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
-            timeout=45.0,
-        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0)) as client:
+            response = await client.post(
+                get_gemini_url(),
+                headers={"x-goog-api-key": GEMINI_API_KEY},
+                json={"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"maxOutputTokens": 2048, "temperature": 0.3}},
+            )
         if response.status_code != 200:
             logger.error("Gemini note enhancement failed (%d): %s", response.status_code, response.text)
             response.raise_for_status()

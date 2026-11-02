@@ -14,6 +14,8 @@ if TEST_DB_PATH.exists():
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH.as_posix()}"
 os.environ["SECRET_KEY"] = "test-secret-key-for-unit-testing-purposes-only"
 os.environ["GEMINI_MODEL"] = "gemini-3.6-flash"
+# Empty key => tests always use the offline mock path (no network, no API cost).
+os.environ["GEMINI_API_KEY"] = ""
 
 from app.database import Base, engine, get_db
 from app.main import app
@@ -205,7 +207,7 @@ class APITestCase(unittest.TestCase):
         self.assertIn("user_message", data)
         self.assertIn("assistant_message", data)
         self.assertIn("used_mock_ai", data)
-        self.assertFalse(data["used_mock_ai"])  # Gemini 3.6 Flash configured!
+        self.assertTrue(data["used_mock_ai"])  # no API key in tests -> mock reply
 
     def test_materials_upload_and_download(self):
         # Upload a markdown study material
@@ -255,6 +257,77 @@ class APITestCase(unittest.TestCase):
         prog_data = prog_res.json()
         self.assertIn("total_notes", prog_data)
         self.assertIn("total_quizzes", prog_data)
+
+    # ---- Forgot / reset password ----
+    def _forgot(self, email):
+        from unittest.mock import patch
+
+        with patch("app.routers.auth.send_password_reset_email") as mocked:
+            res = self.client.post("/api/auth/forgot-password", json={"email": email})
+        return res, mocked
+
+    def _token_from_mock(self, mocked):
+        from urllib.parse import parse_qs, urlparse
+
+        mocked.assert_called_once()
+        reset_url = mocked.call_args.args[2]
+        return parse_qs(urlparse(reset_url).query)["token"][0]
+
+    def test_forgot_password_same_answer_for_unknown_email(self):
+        known, known_mock = self._forgot(self.email)
+        unknown, unknown_mock = self._forgot("nobody_registered_here@example.com")
+        self.assertEqual(known.status_code, 200)
+        self.assertEqual(unknown.status_code, 200)
+        self.assertEqual(known.json(), unknown.json())
+        known_mock.assert_called_once()
+        self.assertEqual(known_mock.call_args.args[0], self.email)
+        unknown_mock.assert_not_called()
+
+    def test_forgot_password_cooldown(self):
+        _, first = self._forgot(self.email)
+        _, second = self._forgot(self.email)
+        first.assert_called_once()
+        second.assert_not_called()
+
+    def test_reset_password_full_flow(self):
+        _, mocked = self._forgot(self.email)
+        token = self._token_from_mock(mocked)
+        new_password = "BrandNewPass456!"
+
+        ok = self.client.post("/api/auth/reset-password", json={"token": token, "new_password": new_password})
+        self.assertEqual(ok.status_code, 200)
+
+        old_login = self.client.post("/api/auth/login", json={"email": self.email, "password": self.password})
+        self.assertEqual(old_login.status_code, 401)
+        new_login = self.client.post("/api/auth/login", json={"email": self.email, "password": new_password})
+        self.assertEqual(new_login.status_code, 200)
+
+        # the link works only once
+        again = self.client.post("/api/auth/reset-password", json={"token": token, "new_password": "AnotherPass789!"})
+        self.assertEqual(again.status_code, 400)
+
+    def test_reset_password_rejects_bad_tokens(self):
+        garbage = self.client.post(
+            "/api/auth/reset-password", json={"token": "not-a-real-token-123", "new_password": "BrandNewPass456!"}
+        )
+        self.assertEqual(garbage.status_code, 400)
+        # a normal login token must not be accepted as a reset token
+        login_token = self.client.post(
+            "/api/auth/reset-password", json={"token": self.token, "new_password": "BrandNewPass456!"}
+        )
+        self.assertEqual(login_token.status_code, 400)
+
+    def test_reset_token_cannot_be_used_to_log_in(self):
+        _, mocked = self._forgot(self.email)
+        token = self._token_from_mock(mocked)
+        me = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(me.status_code, 401)
+
+    def test_reset_password_validates_new_password(self):
+        _, mocked = self._forgot(self.email)
+        token = self._token_from_mock(mocked)
+        short = self.client.post("/api/auth/reset-password", json={"token": token, "new_password": "short"})
+        self.assertEqual(short.status_code, 422)
 
 
 if __name__ == "__main__":

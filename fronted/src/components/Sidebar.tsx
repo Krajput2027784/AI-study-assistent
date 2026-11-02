@@ -13,27 +13,27 @@ const navItems = [
   { path: '/profile', label: 'Profile/Settings', icon: User },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   return (
-    <nav className="w-64 bg-white border-r border-gray-200 min-h-screen p-6 flex flex-col">
-      <h1 className="text-2xl font-bold text-blue-600 mb-8 flex items-center gap-2"><BrainCircuit size={32}/> StudyHub</h1>
+    <nav className={`${mobile ? 'w-full' : 'w-64'} bg-white border-gray-200 min-h-full p-4 sm:p-6 flex flex-col`}>
+      <h1 className="text-2xl font-bold text-blue-600 mb-8 flex items-center gap-2 pr-8"><BrainCircuit size={30}/> StudyHub</h1>
       <div className="mb-6 p-3 rounded-xl bg-blue-50">
         <p className="font-semibold text-gray-900 truncate">{user?.full_name}</p>
         <p className="text-xs text-gray-500 truncate">{user?.email}</p>
       </div>
-      <ul className="space-y-2 flex-grow">
+      <ul className="space-y-1.5 flex-grow">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-          return <li key={item.path}><Link to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}><Icon size={20}/>{item.label}</Link></li>;
+          return <li key={item.path}><Link onClick={onNavigate} to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}><Icon size={19}/><span className="truncate">{item.label}</span></Link></li>;
         })}
       </ul>
-      <div className="pt-6 border-t border-gray-200">
-        <button onClick={() => { logout(); navigate('/login'); }} className="flex items-center gap-3 px-4 py-3 w-full text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg"><LogOut size={20}/>Logout</button>
+      <div className="pt-5 mt-5 border-t border-gray-200">
+        <button onClick={() => { logout(); onNavigate?.(); navigate('/login'); }} className="flex items-center gap-3 px-4 py-3 w-full text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg text-sm"><LogOut size={19}/>Logout</button>
       </div>
     </nav>
   );

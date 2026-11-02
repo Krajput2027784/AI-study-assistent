@@ -65,6 +65,7 @@ export default function Chat() {
   const send = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || busy) return;
+    const text = input;
     setBusy(true);
     setError('');
 
@@ -80,7 +81,6 @@ export default function Chat() {
         setSessions((prev) => [s, ...prev]);
       }
 
-      const text = input;
       setInput('');
 
       const bodyPayload: { content: string; material_id?: number } = { content: text };
@@ -102,6 +102,7 @@ export default function Chat() {
       // Refresh sessions to sync updated title if it was a new chat
       api<Session[]>('/api/chat/sessions').then(setSessions).catch(() => {});
     } catch (e) {
+      setInput(text); // give the user's text back so it isn't lost
       setError(e instanceof Error ? e.message : 'Message failed.');
     } finally {
       setBusy(false);
@@ -109,7 +110,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-1rem)] flex gap-4">
+    <div className="p-3 sm:p-4 lg:p-6 h-[calc(100vh-3.5rem)] md:h-screen flex gap-3 sm:gap-4 min-w-0">
       {/* Sessions sidebar */}
       <aside className="w-64 bg-white border border-gray-200 rounded-xl p-4 hidden md:flex flex-col">
         <button
@@ -178,7 +179,7 @@ export default function Chat() {
         </div>
 
         {/* Message history */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+        <div className="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 min-w-0">
           {messages.length === 0 && (
             <div className="text-center mt-16 max-w-md mx-auto text-gray-500">
               <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
@@ -207,7 +208,7 @@ export default function Chat() {
                 )}
               </div>
               <div
-                className={`p-4 rounded-xl max-w-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
+                className={`p-3 sm:p-4 rounded-xl max-w-[88%] sm:max-w-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm break-words ${
                   msg.role === 'user'
                     ? 'bg-blue-600 text-white rounded-tr-none'
                     : 'bg-gray-100 text-gray-800 rounded-tl-none'
@@ -232,6 +233,13 @@ export default function Chat() {
 
           <div ref={messagesEndRef} />
         </div>
+
+        {usedMockAi === true && (
+          <div className="px-4 py-2 bg-amber-50 text-amber-800 text-xs border-t border-amber-100">
+            Gemini did not respond, so the last reply is a fallback. Check GEMINI_API_KEY and the
+            backend logs.
+          </div>
+        )}
 
         {error && (
           <div className="px-4 py-2 bg-red-50 text-red-600 text-xs border-t border-red-100">

@@ -101,7 +101,7 @@ export default function QuizGenerator() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-3 text-gray-900">
           <BrainCircuit className="text-blue-600" />
@@ -124,6 +124,13 @@ export default function QuizGenerator() {
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
           {error}
+        </div>
+      )}
+
+      {quiz?.used_fallback && (
+        <div className="mb-6 p-4 rounded-lg bg-amber-50 text-amber-800 text-sm border border-amber-200">
+          Gemini could not generate this quiz, so these are generic placeholder questions. Check
+          GEMINI_API_KEY and the backend logs, then generate again.
         </div>
       )}
 
