@@ -25,6 +25,7 @@ https://ai-study-assistent-pxoj.onrender.com/docs
 
 ### 🔐 Authentication
 - User registration and login
+- Forgot password (reset link sent by email)
 - JWT-based authentication
 - Protected routes
 - User profile management

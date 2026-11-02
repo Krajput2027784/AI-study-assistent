@@ -97,7 +97,7 @@ def get_session(
     response_model=ChatMessageResponse,
     summary="Send a message and receive an AI reply",
 )
-def send_message(
+async def send_message(
     session_id: int,
     payload: ChatMessageCreate,
     db: Session = Depends(get_db),
@@ -122,7 +122,9 @@ def send_message(
         content=payload.content.strip(),
     )
     db.add(user_message)
-    db.flush()
+    # Commit before the slow Gemini call so SQLite's write lock is not held while waiting.
+    db.commit()
+    db.refresh(user_message)
 
     history = [
         {"role": msg.role, "content": msg.content}
@@ -131,7 +133,7 @@ def send_message(
     ]
     history.append({"role": "user", "content": user_message.content})
 
-    reply_text, used_mock = generate_study_reply(history, extra_context=extra_context)
+    reply_text, used_mock = await generate_study_reply(history[-12:], extra_context=extra_context)
 
     assistant_message = ChatMessage(
         session_id=session.id,

@@ -42,7 +42,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="p-8 max-w-6xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
         <div className="p-4 rounded-xl bg-red-50 text-red-700 text-sm border border-red-100">
           {error}
         </div>
@@ -72,7 +72,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Welcome Banner */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">

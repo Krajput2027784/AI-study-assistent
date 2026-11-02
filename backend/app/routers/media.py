@@ -9,9 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import (
     ALLOWED_AUDIO_EXTENSIONS,
-    ALLOWED_AUDIO_MIME_TYPES,
     ALLOWED_VIDEO_EXTENSIONS,
-    ALLOWED_VIDEO_MIME_TYPES,
     AUDIO_DIR,
     BASE_DIR,
     MAX_AUDIO_BYTES,
@@ -42,20 +40,16 @@ def _validate_media_file(kind: str, filename: str, content_type: str | None, siz
     if size <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file.")
     if size > max_bytes:
-        limit_label = "100MB" if kind == "video" else "50MB"
+        limit_label = f"{max_bytes // (1024 * 1024)}MB"
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"File is too large. Maximum size is {limit_label}.",
         )
 
     suffix = Path(filename).suffix.lower()
-    mime = (content_type or "").split(";")[0].strip().lower()
-    if kind == "video":
-        allowed_ext, allowed_mime = ALLOWED_VIDEO_EXTENSIONS, ALLOWED_VIDEO_MIME_TYPES
-    else:
-        allowed_ext, allowed_mime = ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_MIME_TYPES
+    allowed_ext = ALLOWED_VIDEO_EXTENSIONS if kind == "video" else ALLOWED_AUDIO_EXTENSIONS
 
-    if suffix not in allowed_ext and mime not in allowed_mime:
+    if suffix not in allowed_ext:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported {kind} file type.",
@@ -83,6 +77,11 @@ async def create_media(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="kind must be video or audio.")
 
     url = (source_url or "").strip() or None
+    if url and not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="source_url must start with http:// or https://",
+        )
     relative_path = None
 
     has_file = file is not None and file.filename
@@ -94,13 +93,7 @@ async def create_media(
         dest = folder / f"{uuid.uuid4().hex}_{Path(original_name).name}"
         dest.write_bytes(content)
         relative_path = dest.relative_to(BASE_DIR).as_posix()
-    elif url:
-        if not (url.startswith("http://") or url.startswith("https://")):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="source_url must start with http:// or https://",
-            )
-    else:
+    elif not url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provide either an uploaded file or a source_url.",

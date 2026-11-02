@@ -7,7 +7,7 @@ from starlette.requests import Request
 from sqlalchemy.orm import Session
 
 from app.auth import decode_access_token
-from app.config import MAX_VIDEO_BYTES
+from app.config import MAX_AUDIO_BYTES, MAX_MATERIAL_BYTES, MAX_VIDEO_BYTES
 from app.database import get_db
 from app.models import User
 
@@ -19,7 +19,7 @@ class LargeFormRequest(Request):
     """Allow study-file uploads larger than Starlette's 1MB default part size."""
 
     async def form(self, *args, **kwargs):
-        kwargs.setdefault("max_part_size", MAX_VIDEO_BYTES)
+        kwargs.setdefault("max_part_size", max(MAX_VIDEO_BYTES, MAX_MATERIAL_BYTES, MAX_AUDIO_BYTES))
         return await super().form(*args, **kwargs)
 
 

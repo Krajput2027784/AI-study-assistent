@@ -16,7 +16,7 @@ Open `backend/.env` and verify your configuration:
 ```env
 DATABASE_URL=sqlite:///./app.db
 SECRET_KEY=your-secure-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=60
+ACCESS_TOKEN_EXPIRE_MINUTES=43200
 GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY
 GEMINI_MODEL=gemini-3.6-flash
 FRONTEND_URL=http://localhost:3000
@@ -48,7 +48,7 @@ npm run dev
 
 Open: http://localhost:3000
 
-The frontend connects to the backend at `http://127.0.0.1:8000` as configured in `fronted/.env`.
+The frontend uses `VITE_API_BASE_URL` when provided. If you open the Vite app from another device on the same Wi-Fi/LAN, the app automatically targets the computer hosting the frontend at port 8000. For a deployed frontend + separate backend, set `VITE_API_BASE_URL` to the backend's public HTTPS URL before building.
 
 ## Key Features & Production Enhancements
 
@@ -60,3 +60,17 @@ The frontend connects to the backend at `http://127.0.0.1:8000` as configured in
 - **Video & Audio Learning Resources**: Add YouTube embeds or upload local media with range-seeking support and direct streaming.
 - **Dashboard & Progress Tracking**: Comprehensive metrics tracking total notes, materials, quizzes taken, quiz averages, and study sessions.
 - **Enterprise-Grade Security**: JWT authentication with bcrypt password hashing, CORS protection, and secure file validation.
+
+## Device / responsive setup
+
+- Desktop, tablet, and mobile layouts are supported. On small screens the dashboard sidebar becomes a slide-out menu.
+- Local LAN testing: run the backend with `--host 0.0.0.0 --port 8000` and frontend with `npm run dev`. Open the frontend using the host computer's LAN IP from the phone/tablet.
+- If Windows Firewall blocks port 8000 or 3000, allow Python/Node on the private network.
+- Production: deploy the FastAPI backend on a persistent server and the React frontend on a static host. Set `VITE_API_BASE_URL=https://YOUR-BACKEND-DOMAIN` and `FRONTEND_URL=https://YOUR-FRONTEND-DOMAIN`. Do not use localhost in production.
+
+## Performance changes
+
+- AI requests are asynchronous instead of blocking the FastAPI worker.
+- Gemini requests have bounded 20-second timeouts and output limits.
+- Chat history sent to Gemini is limited to the latest 12 messages to keep prompts fast.
+- Frontend API calls fail with a useful connection/timeout message instead of hanging indefinitely.

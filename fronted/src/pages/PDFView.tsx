@@ -16,6 +16,7 @@ export default function PDFView() {
   const nav = useNavigate();
   const [material, setMaterial] = useState<Material | null>(null);
   const [url, setUrl] = useState('');
+  const [textContent, setTextContent] = useState<string | null>(null);
   const urlRef = useRef('');
   const [q, setQ] = useState('');
   const [conversation, setConversation] = useState<ChatEntry[]>([]);
@@ -33,6 +34,7 @@ export default function PDFView() {
     let active = true;
     setMaterial(null);
     setUrl('');
+    setTextContent(null);
     setError('');
     setConversation([]);
     setSessionId(null);
@@ -67,6 +69,25 @@ export default function PDFView() {
       }
     };
   }, [id]);
+
+  // Render .txt/.md as plain text: browsers often download text/markdown (or an
+  // unknown type) instead of showing it inside an iframe.
+  useEffect(() => {
+    if (!url || !material) return;
+    if (!['txt', 'md'].includes(material.material_type.toLowerCase())) return;
+    let active = true;
+    fetch(url)
+      .then((r) => r.text())
+      .then((t) => {
+        if (active) setTextContent(t);
+      })
+      .catch(() => {
+        if (active) setError('Could not read this text file.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [url, material]);
 
   const ask = async (e: FormEvent) => {
     e.preventDefault();
@@ -146,11 +167,9 @@ export default function PDFView() {
             {url && material && isPdf ? (
               <iframe src={url} title="PDF viewer" className="w-full h-full min-h-[65vh]" />
             ) : url && material && VIEWABLE_TYPES.has(material.material_type.toLowerCase()) ? (
-              <iframe
-                src={url}
-                title="Study material viewer"
-                className="w-full h-full min-h-[65vh] bg-gray-50"
-              />
+              <pre className="w-full h-full min-h-[65vh] max-h-[75vh] overflow-auto p-4 text-xs leading-relaxed whitespace-pre-wrap break-words bg-gray-50 text-gray-800 font-mono">
+                {textContent ?? 'Loading text…'}
+              </pre>
             ) : url && material ? (
               <div className="min-h-[65vh] grid place-items-center p-8 text-center text-gray-600">
                 <div>

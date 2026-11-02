@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import re
 from typing import Any
 
@@ -157,7 +158,13 @@ def _fallback(topic: str, count: int) -> list[dict[str, Any]]:
             "explanation": "Concept review combined with practice is a strong preparation method.",
         },
     ]
-    return bank[: max(2, min(count, len(bank)))]
+    selected = bank[: max(2, min(count, len(bank)))]
+    shuffled: list[dict[str, Any]] = []
+    for item in selected:
+        options = list(item["options"])
+        random.shuffle(options)  # otherwise the correct answer is always option 1
+        shuffled.append({**item, "options": options})
+    return shuffled
 
 
 def _normalise_questions(items: Any, count: int) -> list[dict[str, Any]]:
@@ -176,6 +183,10 @@ def _normalise_questions(items: Any, count: int) -> list[dict[str, Any]]:
             continue
 
         options = list(dict.fromkeys(option for option in options if option))
+        if len(options) > 4 and answer in options:
+            # Keep the correct answer when trimming to 4 options.
+            keep = {answer, *[o for o in options if o != answer][:3]}
+            options = [o for o in options if o in keep]
         if question_text and len(options) >= 2 and answer in options:
             valid.append(
                 {
@@ -191,7 +202,7 @@ def _normalise_questions(items: Any, count: int) -> list[dict[str, Any]]:
     return valid
 
 
-def generate_quiz_questions(topic: str, count: int) -> tuple[list[dict[str, Any]], bool]:
+async def generate_quiz_questions(topic: str, count: int) -> tuple[list[dict[str, Any]], bool]:
     count = max(2, min(count, 10))
 
     if not GEMINI_API_KEY:
@@ -205,12 +216,12 @@ def generate_quiz_questions(topic: str, count: int) -> tuple[list[dict[str, Any]
     )
 
     try:
-        response = httpx.post(
-            get_gemini_url(),
-            params={"key": GEMINI_API_KEY},
-            json={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
-            timeout=45,
-        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=5.0)) as client:
+            response = await client.post(
+                get_gemini_url(),
+                headers={"x-goog-api-key": GEMINI_API_KEY},
+                json={"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"maxOutputTokens": 4096, "temperature": 0.3, "responseMimeType": "application/json"}},
+            )
         if response.status_code != 200:
             logger.error("Gemini quiz generation HTTP error %d: %s", response.status_code, response.text)
             response.raise_for_status()

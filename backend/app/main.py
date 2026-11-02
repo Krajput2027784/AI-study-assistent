@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import ALLOWED_ORIGINS, GEMINI_MODEL, SECRET_KEY, ensure_upload_dirs
+from app.config import ALLOWED_ORIGINS, ALLOW_LOCAL_NETWORK_CORS, GEMINI_MODEL, SECRET_KEY, ensure_upload_dirs
 from app.database import init_db
 from app.routers import auth, chat, dashboard, materials, media, notes, progress, quizzes, users
 from app.schemas import HealthResponse
@@ -37,7 +37,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=(r"https?://(localhost|127\.0\.0\.1)(:\d+)?" + (r"|https?://(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)[0-9.]+(:\d+)?" if ALLOW_LOCAL_NETWORK_CORS else r"")),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

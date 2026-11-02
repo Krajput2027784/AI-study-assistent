@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, clearToken, getToken, setToken } from './api';
+import { ApiError, api, clearToken, getToken, setToken } from './api';
 
 export interface User {
   id: number;
@@ -38,40 +38,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await api<User>('/api/auth/me');
       setUser(me);
       localStorage.setItem('studyhub_user', JSON.stringify(me));
-    } catch {
-      clearToken();
-      setUser(null);
+    } catch (error) {
+      // Only end the session when the server says the token is invalid (401).
+      // A network error or a sleeping/cold-starting backend must NOT log the user out.
+      if (error instanceof ApiError && error.status === 401) {
+        clearToken();
+        setUser(null);
+      }
     }
   };
 
   useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
+    void refreshUser().finally(() => setLoading(false));
   }, []);
+
+  // api() fires this when the server answers 401 (expired/invalid token).
+  useEffect(() => {
+    const onUnauthorized = () => setUser(null);
+    window.addEventListener('studyhub:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('studyhub:unauthorized', onUnauthorized);
+  }, []);
+
+  const finishLogin = async (accessToken: string) => {
+    setToken(accessToken);
+    try {
+      const me = await api<User>('/api/auth/me');
+      setUser(me);
+      localStorage.setItem('studyhub_user', JSON.stringify(me));
+    } catch (error) {
+      clearToken();
+      setUser(null);
+      throw error; // surface the real error on the Login/Signup page
+    }
+  };
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
     loading,
     login: async (email, password) => {
+      const cleanEmail = email.trim().toLowerCase();
       const result = await api<{ access_token: string; token_type: string }>('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
-      setToken(result.access_token);
-      await refreshUser();
+      await finishLogin(result.access_token);
     },
     signup: async (fullName, email, password) => {
+      const cleanEmail = email.trim().toLowerCase();
       await api<User>('/api/auth/signup', {
         method: 'POST',
-        body: JSON.stringify({ full_name: fullName, email, password }),
+        body: JSON.stringify({ full_name: fullName.trim(), email: cleanEmail, password }),
       });
-      await (async () => {
-        const result = await api<{ access_token: string; token_type: string }>('/api/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        });
-        setToken(result.access_token);
-        await refreshUser();
-      })();
+      const result = await api<{ access_token: string; token_type: string }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
+      await finishLogin(result.access_token);
     },
     logout: () => {
       clearToken();

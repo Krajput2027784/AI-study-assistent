@@ -2,7 +2,7 @@
 
 Backend API for the existing React Study Assistant UI in `fronted/`.
 
-This service handles student accounts, JWT login, notes, study files, video/audio resources, quizzes, AI chat, and progress. The React app is **not** wired to these APIs yet. When you connect it later, point it at `http://127.0.0.1:8000` and send `Authorization: Bearer <token>`.
+This service handles student accounts, JWT login, notes, study files, video/audio resources, quizzes, AI chat, and progress. The React app in `../fronted` is wired to these APIs. It sends `Authorization: Bearer <token>` for protected requests. Local development uses port 8000; deployed frontends should set `VITE_API_BASE_URL` to the public backend HTTPS URL.
 
 ## 1. Purpose
 
@@ -114,7 +114,7 @@ Required values:
 ```
 DATABASE_URL=sqlite:///./app.db
 SECRET_KEY=change-this-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=60
+ACCESS_TOKEN_EXPIRE_MINUTES=43200
 GEMINI_API_KEY=
 FRONTEND_URL=http://localhost:3000
 ```
@@ -225,4 +225,4 @@ When you do:
 - APIs never return `password` or `hashed_password`
 
 ## Frontend integration
-The React app in `../fronted` uses `VITE_API_BASE_URL` (default `http://127.0.0.1:8000`) and sends the JWT as a Bearer token. Start FastAPI first, then start Vite on port 3000.
+The React app in `../fronted` uses `VITE_API_BASE_URL` when supplied. For local LAN development it can automatically target the same machine on port 8000. Start FastAPI with `--host 0.0.0.0 --port 8000` when testing from a phone/tablet on the same Wi-Fi.

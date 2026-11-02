@@ -28,12 +28,12 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Generate a study quiz with AI",
 )
-def generate_quiz(
+async def generate_quiz(
     payload: QuizGenerateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> QuizPublic:
-    questions, _used_fallback = generate_quiz_questions(payload.topic.strip(), payload.question_count)
+    questions, used_fallback = await generate_quiz_questions(payload.topic.strip(), payload.question_count)
     quiz = Quiz(user_id=current_user.id, title=f"{payload.topic.strip()} Quiz", description="AI-generated study quiz")
     db.add(quiz)
     db.flush()
@@ -44,6 +44,7 @@ def generate_quiz(
     return QuizPublic(
         id=quiz.id, user_id=quiz.user_id, title=quiz.title, description=quiz.description, created_at=quiz.created_at,
         questions=[QuestionPublic(id=q.id, question_text=q.question_text, options=list(q.options)) for q in quiz.questions],
+        used_fallback=used_fallback,
     )
 
 
